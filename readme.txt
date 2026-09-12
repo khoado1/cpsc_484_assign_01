@@ -52,3 +52,7 @@ git remote add origin https://github.com/khoado1/cpsc_484_assign_01.git
 
 # Verify the remote URL is mapped correctly
 git remote -v
+
+git add .
+git commit -m "Your commit message here"
+git push origin main
