@@ -29,3 +29,26 @@ clang++ main.cpp glad.c -o assignment_0 -I. \
 tar -czvf "CPSC 484 - Assignment 0 - Khoa Do.tar.gz" submission/
 
 Assignment submission: https://csufullerton.instructure.com/courses/3625063/assignments/40215275?module_item_id=93137612
+
+# Navigate to your project folder
+cd /path/to/your/local/project
+
+# Initialize a local Git repository
+git init
+
+# Add all project files to the staging area
+git add .
+
+# Commit the files with an initial message
+git commit -m "Initial commit"
+
+# Rename your default branch to 'main' (standard for GitHub)
+git branch -M main
+
+# Link the remote repository as 'origin'
+git remote add origin <PASTE_YOUR_GITHUB_URL_HERE>
+branch: https://github.com/khoado1/cpsc_484_assign_01.git
+git remote add origin https://github.com/khoado1/cpsc_484_assign_01.git
+
+# Verify the remote URL is mapped correctly
+git remote -v
