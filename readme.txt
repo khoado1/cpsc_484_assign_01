@@ -23,12 +23,28 @@ clang++ main.cpp glad.c -o assignment_0 -I. \
 -framework IOKit -framework CoreVideo \
 -DGL_SILENCE_DEPRECATION
 
-./assignment_0
+#setup
+
+Ubuntu
+sudo apt update
+sudo apt install build-essential g++ gcc libgl-dev libglfw3 libglfw3-dev libglm-dev mesa-utils make cmake git bzip2 tar
+
+macos
+brew install glfw cmake
+brew install glm
+
+#includes
+/opt/homebrew/include
+
+./assignment_1
 
 //outside of submission folder
 tar -czvf "CPSC 484 - Assignment 0 - Khoa Do.tar.gz" submission/
 
 Assignment submission: https://csufullerton.instructure.com/courses/3625063/assignments/40215275?module_item_id=93137612
+
+#clone repository
+git clone -b main https://github.com/khoado1/cpsc_484_assign_01.git
 
 # Navigate to your project folder
 cd /path/to/your/local/project
@@ -56,3 +72,6 @@ git remote -v
 git add .
 git commit -m "Your commit message here"
 git push -u origin main
+
+
+clear; make clean; make all

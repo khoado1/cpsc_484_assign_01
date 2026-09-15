@@ -34,9 +34,16 @@
 #include <iostream>        // std::cerr / std::cout for error and debug messages
 #include <string>          // std::string -- used by isRunningUnderWSL() below, and by the titleString you'll add next
 
-// TODO (2.1): declare your own window-title string here. See Assignment 1
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+using namespace std;
+using namespace glm;
+
+// TODONE (2.1): declare your own window-title string here. See Assignment 1
 // Instructions, Section 2.1. Something like:
-//     std::string titleString = "Fall 2026 - Assignment 1 - <Your Full Name>";
+std::string titleString = "Fall 2026 - Assignment 1 - Khoa Do";
 
 // -----------------------------------------------------------------------------
 // FUNCTION PROTOTYPES
@@ -53,6 +60,57 @@ unsigned int createShaderProgram(const char* vertexSrc, const char* fragmentSrc)
 // scattered through the file.
 const unsigned int SCR_WIDTH = 800;  // window width in pixels
 const unsigned int SCR_HEIGHT = 600; // window height in pixels
+
+
+const char* vertexShaderSource = R"GLSL(
+#version 330 core
+// "layout (location = N)" must match the glVertexAttribPointer(N, ...) calls
+// in createLetterBuffer() below -- that's how the CPU-side vertex data gets
+// matched up to these shader inputs.
+layout (location = 0) in vec3 aPos;     // this vertex's position, straight from our VBO
+layout (location = 1) in vec3 aNormal;  // this vertex's normal (which way its face points)
+
+// "out" variables are computed once per vertex here, then automatically
+// interpolated across each triangle before the fragment shader below sees
+// them (that interpolation step is called rasterization).
+out vec3 Normal;                        // will be picked up by "in vec3 Normal" in the fragment shader
+
+// A "uniform" is a value we set once per draw call from the CPU (see
+// glUniformMatrix4fv in the render loop) that stays constant across every
+// vertex/pixel of that draw call -- unlike aPos/aNormal, which are
+// different for every vertex.
+uniform mat4 transform;                 // this letter's combined rotate+scale+position matrix, set from the CPU
+
+void main() {                           // GLSL entry point -- runs once per vertex
+    // mat3(transform) keeps only the rotation+scale part of the 4x4 matrix
+    // (it drops the translation column), which is what you want when
+    // transforming a *direction* like a normal instead of a *point*.
+    Normal = mat3(transform) * aNormal; // rotate/scale this vertex's normal the same way the shape itself is rotated/scaled
+
+    // gl_Position is a special built-in output: OpenGL reads it to know
+    // where this vertex lands on screen (in clip space).
+    gl_Position = transform * vec4(aPos, 1.0); // transform this vertex's position into its final on-screen location
+}
+)GLSL";
+
+const char* fragmentShaderSource = R"GLSL(
+#version 330 core
+out vec4 FragColor;      // the final pixel color -- this is the only required output
+in vec3 Normal;          // interpolated from the vertex shader's "out vec3 Normal" above
+uniform vec3 color;      // this letter's current color, set from the CPU each frame
+
+void main() {                                           // GLSL entry point -- runs once per pixel (fragment)
+    vec3 N = normalize(Normal);                         // interpolation can shrink the length; renormalize to unit length
+    vec3 lightDir = normalize(vec3(0.4, 0.6, 1.0));      // a fixed light direction, never moves
+
+    float ambient = 0.5;                                // a little light even on faces facing away from the light
+    float diffuse = max(dot(N, lightDir), 0.0) * 1.2;    // brighter when a face points toward the light; clamp negative to 0
+
+    FragColor = vec4(color * (ambient + diffuse), 1.0);  // scale this letter's color by the light amount; alpha = fully opaque
+}
+)GLSL";
+
+
 
 // TODO (2.3): declare your vertex shader and fragment shader source here, as
 // C++ raw string literals (see the Assignment 0 demo for the R"GLSL(...)GLSL"
@@ -80,6 +138,59 @@ const unsigned int SCR_HEIGHT = 600; // window height in pixels
 // data once you've decided on a layout -- see Section 2.2 for the required
 // float vertices[] / unsigned int indices[] shape. You'll also need VAO/VBO/
 // EBO ids once you get to uploading that data to the GPU.
+
+
+float vertices[] = {
+    // Back face (-Z)
+    -0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+     0.5f, -0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+     0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+    -0.5f,  0.5f, -0.5f,    0.0f, 0.0f, -1.0f,
+
+    // Front face (+Z)
+    -0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,    0.0f, 0.0f, 1.0f,
+
+    // Left face (-X)
+    -0.5f, -0.5f, -0.5f,   -1.0f, 0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,   -1.0f, 0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,   -1.0f, 0.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,   -1.0f, 0.0f, 0.0f,
+
+    // Right face (+X)
+    0.5f, -0.5f, -0.5f,    1.0f,  0.0f, 0.0f,
+    0.5f, -0.5f,  0.5f,    1.0f,  0.0f, 0.0f,
+    0.5f,  0.5f,  0.5f,    1.0f,  0.0f, 0.0f,
+    0.5f,  0.5f, -0.5f,    1.0f,  0.0f, 0.0f,
+
+    // Bottom face (-Y)
+    -0.5f, -0.5f, -0.5f,    0.0f, -1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,    0.0f, -1.0f, 0.0f,
+    0.5f, -0.5f,  0.5f,    0.0f, -1.0f, 0.0f,
+    0.5f, -0.5f, -0.5f,    0.0f, -1.0f, 0.0f,
+
+    // Top face (+Y)
+    -0.5f,  0.5f, -0.5f,    0.0f,  1.0f, 0.0f,
+    0.5f,  0.5f, -0.5f,    0.0f,  1.0f, 0.0f,
+    0.5f,  0.5f,  0.5f,    0.0f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,    0.0f,  1.0f, 0.0f
+};
+
+// Counter-clockwise winding as viewed from outside each face.
+unsigned int indices[] = {
+     0,  3,  2,   2,  1,  0,  // back
+     4,  5,  6,   6,  7,  4,  // front
+     8,  9, 10,  10, 11,  8,  // left
+    12, 13, 14,  14, 15, 12,  // right
+    16, 17, 18,  18, 19, 16,  // bottom
+    20, 21, 22,  22, 23, 20   // top
+};
+
+unsigned int VAO = 0;
+unsigned int VBO = 0;
+unsigned int EBO = 0;
 
 // TODO (2.4/2.5/2.6): declare whatever state your input handling needs to
 // read and modify -- e.g. the cube's current color, a list of colors to
@@ -135,7 +246,7 @@ int main() {
 
     // TODO (2.1): pass your titleString.c_str() as the window title below
     // instead of the placeholder "Assignment 1" literal.
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Assignment 1", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, titleString.c_str(), nullptr, nullptr);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -159,6 +270,10 @@ int main() {
     // and fragmentShaderSource exist above.
     // unsigned int shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
+    unsigned int shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource); // compile + link our one shader program
+
+
+
     glEnable(GL_DEPTH_TEST); // near surfaces should hide far ones -- you'll want this once you have a 3D cube
 
     // TODO (2.2): build your cube's vertex/index data and upload it to the
@@ -166,6 +281,67 @@ int main() {
     // glBufferData / glVertexAttribPointer / glEnableVertexAttribArray),
     // once you've declared the arrays and layout above. This happens once,
     // before the render loop -- not every frame.
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        sizeof(vertices),
+        vertices,
+        GL_STATIC_DRAW
+    );
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER,
+        sizeof(indices),
+        indices,
+        GL_STATIC_DRAW
+    );
+
+    // Attribute 0: position -- first three floats in each six-float vertex.
+    glVertexAttribPointer(
+        0,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        6 * sizeof(float),
+        reinterpret_cast<void*>(0)
+    );
+    glEnableVertexAttribArray(0);
+
+    // Attribute 1: normal -- second three floats in each six-float vertex.
+    glVertexAttribPointer(
+        1,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        6 * sizeof(float),
+        reinterpret_cast<void*>(3 * sizeof(float))
+    );
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0); // unbind VAO to avoid accidental modification
+
+
+    std::vector<glm::vec3> presetColors = {
+        {1.0f, 0.0f, 0.0f},  // red
+        {0.0f, 1.0f, 0.0f},  // green
+        {0.0f, 0.0f, 1.0f},  // blue
+        {1.0f, 1.0f, 0.0f},  // yellow
+        {1.0f, 0.0f, 1.0f},  // magenta
+        {0.0f, 1.0f, 1.0f},  // cyan
+        {1.0f, 0.5f, 0.0f},  // orange
+        {1.0f, 1.0f, 1.0f}   // white
+    };
+
+
+
 
     // ---- Step 6 (numbering matches the Assignment 0 demo): render loop --
     while (!glfwWindowShouldClose(window)) {
@@ -183,6 +359,28 @@ int main() {
         // render loop that was specific to drawing letters -- yours will be
         // specific to drawing (and rotating, and recoloring, and relighting)
         // your cube instead.
+
+        glUseProgram(shaderProgram); // "use this shader program for every draw call below"
+
+        float transform[16] = {
+            1.0f,  0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f
+        };
+
+        int transformLoc = glGetUniformLocation(shaderProgram, "transform"); // ask the shader program where its "transform" uniform lives
+        glUniformMatrix4fv(transformLoc, 1, GL_TRUE, transform);              // upload it -- GL_TRUE transposes, since we wrote it row-major above
+
+        glm::vec3 cubeColor(1.0f, 0.50f, 0.50f);
+
+        int colorLoc = glGetUniformLocation(shaderProgram, "color"); // ask the shader program where its "color" uniform lives
+        glUniform3fv(colorLoc, GL_TRUE, glm::value_ptr(cubeColor));
+
+        glBindVertexArray(VAO); // bind the VAO that records our vertex/index buffers and layout
+        
+        //sizeof(indices) / sizeof(indices[0]) = 36, which is the number of indices in the array
+        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(indices[0]), GL_UNSIGNED_INT, nullptr); // draw the cube using the index buffer 
 
         glfwSwapBuffers(window);
         glfwPollEvents();
