@@ -55,4 +55,4 @@ git remote -v
 
 git add .
 git commit -m "Your commit message here"
-git push origin main
+git push -u origin main
