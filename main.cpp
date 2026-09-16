@@ -75,6 +75,8 @@ layout (location = 1) in vec3 aNormal;  // this vertex's normal (which way its f
 // them (that interpolation step is called rasterization).
 out vec3 Normal;                        // will be picked up by "in vec3 Normal" in the fragment shader
 
+out vec3 FragPos;                       // will be picked up by "in vec3 FragPos" in the fragment shader    
+
 // A "uniform" is a value we set once per draw call from the CPU (see
 // glUniformMatrix4fv in the render loop) that stays constant across every
 // vertex/pixel of that draw call -- unlike aPos/aNormal, which are
@@ -82,10 +84,15 @@ out vec3 Normal;                        // will be picked up by "in vec3 Normal"
 uniform mat4 transform;                 // this letter's combined rotate+scale+position matrix, set from the CPU
 
 void main() {                           // GLSL entry point -- runs once per vertex
+
+    vec4 worldPos = transform * vec4(aPos, 1.0); // transform this vertex's position into world space
+
     // mat3(transform) keeps only the rotation+scale part of the 4x4 matrix
     // (it drops the translation column), which is what you want when
     // transforming a *direction* like a normal instead of a *point*.
     Normal = mat3(transform) * aNormal; // rotate/scale this vertex's normal the same way the shape itself is rotated/scaled
+
+    //FragPos = vec3(worldPos); // pass the world-space position to the fragment shader
 
     // gl_Position is a special built-in output: OpenGL reads it to know
     // where this vertex lands on screen (in clip space).
@@ -96,12 +103,17 @@ void main() {                           // GLSL entry point -- runs once per ver
 const char* fragmentShaderSource = R"GLSL(
 #version 330 core
 out vec4 FragColor;      // the final pixel color -- this is the only required output
+
+int vec3 FragPos;          // interpolated from the vertex shader's "out vec3 FragPos" above
+
 in vec3 Normal;          // interpolated from the vertex shader's "out vec3 Normal" above
 uniform vec3 color;      // this letter's current color, set from the CPU each frame
+uniform vec3 lightPos;   // the light's position, set from the CPU each frame
 
 void main() {                                           // GLSL entry point -- runs once per pixel (fragment)
     vec3 N = normalize(Normal);                         // interpolation can shrink the length; renormalize to unit length
-    vec3 lightDir = normalize(vec3(0.4, 0.6, 1.0));      // a fixed light direction, never moves
+    //vec3 lightDir = normalize(vec3(0.4, 0.6, 1.0));      // a fixed light direction, never moves
+    vec3 lightDir = normalize(lightPos - FragPos);               // a light direction that can be changed from the CPU each frame
 
     float ambient = 0.5;                                // a little light even on faces facing away from the light
     float diffuse = max(dot(N, lightDir), 0.0) * 1.2;    // brighter when a face points toward the light; clamp negative to 0
@@ -188,9 +200,33 @@ unsigned int indices[] = {
     20, 21, 22,  22, 23, 20   // top
 };
 
+std::vector<glm::vec3> presetColors = {
+    {1.0f, 0.0f, 0.0f},  // red
+    {0.0f, 1.0f, 0.0f},  // green
+    {0.0f, 0.0f, 1.0f},  // blue
+    {1.0f, 1.0f, 0.0f},  // yellow
+    {1.0f, 0.0f, 1.0f},  // magenta
+    {0.0f, 1.0f, 1.0f},  // cyan
+    {1.0f, 0.5f, 0.0f},  // orange
+    {1.0f, 1.0f, 1.0f}   // white
+};
+
 unsigned int VAO = 0;
 unsigned int VBO = 0;
 unsigned int EBO = 0;
+
+unsigned int colorIndex = 0; // index of the current color in the presetColors vector
+glm::vec3 cubeColor(0.0f, 0.0f, 0.0f);
+
+float rotationAngleX = 0.0f; // rotation angle around the X-axis
+float rotationAngleY = 0.0f; // rotation angle around the Y-axis
+
+const float rotationStep = 5.0f; // degrees per key press
+float rotationXSpeed = 1.0f; // degrees per second for continuous rotation
+float rotationYSpeed = 1.0f; // degrees per second for continuous rotation
+
+glm::vec3 lightPos(1.0f, 1.0f, -5.0f); // initial light position
+const float lightStep = 0.5f; // step size for moving the light position
 
 // TODO (2.4/2.5/2.6): declare whatever state your input handling needs to
 // read and modify -- e.g. the cube's current color, a list of colors to
@@ -236,7 +272,7 @@ int main() {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return -1;
-    }
+    } 
 
     // Ask for an OpenGL 3.3 Core Profile context, same as Assignment 0.
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -328,21 +364,6 @@ int main() {
 
     glBindVertexArray(0); // unbind VAO to avoid accidental modification
 
-
-    std::vector<glm::vec3> presetColors = {
-        {1.0f, 0.0f, 0.0f},  // red
-        {0.0f, 1.0f, 0.0f},  // green
-        {0.0f, 0.0f, 1.0f},  // blue
-        {1.0f, 1.0f, 0.0f},  // yellow
-        {1.0f, 0.0f, 1.0f},  // magenta
-        {0.0f, 1.0f, 1.0f},  // cyan
-        {1.0f, 0.5f, 0.0f},  // orange
-        {1.0f, 1.0f, 1.0f}   // white
-    };
-
-
-
-
     // ---- Step 6 (numbering matches the Assignment 0 demo): render loop --
     while (!glfwWindowShouldClose(window)) {
         // TODO: poll any continuously-held keys here, if you're using that
@@ -362,20 +383,24 @@ int main() {
 
         glUseProgram(shaderProgram); // "use this shader program for every draw call below"
 
-        float transform[16] = {
-            1.0f,  0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 1.0f
-        };
+        rotationAngleX += rotationXSpeed * 0.1f; // update rotation angle based on time
+        rotationAngleY += rotationYSpeed * 0.1f; // update rotation angle based on time
 
-        int transformLoc = glGetUniformLocation(shaderProgram, "transform"); // ask the shader program where its "transform" uniform lives
-        glUniformMatrix4fv(transformLoc, 1, GL_TRUE, transform);              // upload it -- GL_TRUE transposes, since we wrote it row-major above
-
-        glm::vec3 cubeColor(1.0f, 0.50f, 0.50f);
+        glm::mat4 transform = glm::mat4(1.0f); // identity matrix -- no translation, rotation, or scale
+        
+        transform = glm::rotate(transform, glm::radians(rotationAngleX), glm::vec3(0.0f, 1.0f, 0.0f)); // rotate around X-axis
+        transform = glm::rotate(transform, glm::radians(rotationAngleY), glm::vec3(1.0f, 0.0f, 0.0f)); // rotate around Y-axis
+        
+        cubeColor = presetColors[colorIndex]; // set the cube color to the current preset color 
 
         int colorLoc = glGetUniformLocation(shaderProgram, "color"); // ask the shader program where its "color" uniform lives
-        glUniform3fv(colorLoc, GL_TRUE, glm::value_ptr(cubeColor));
+        glUniform3fv(colorLoc, 1, glm::value_ptr(cubeColor));
+
+        glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, glm::value_ptr(lightPos));
+
+        int transformLoc = glGetUniformLocation(shaderProgram, "transform"); // ask the shader program where its "transform" uniform lives
+        
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));              // upload it -- GL_TRUE transposes, since we wrote it row-major above
 
         glBindVertexArray(VAO); // bind the VAO that records our vertex/index buffers and layout
         
@@ -411,6 +436,60 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     // action == GLFW_PRESS means "just went down this frame" -- check that
     // (or don't, depending on whether you want one-shot or repeat-while-
     // held behavior) the same way the Assignment 0 demo's key_callback does.
+
+    if (action == GLFW_PRESS) {
+        switch (key) {
+        case GLFW_KEY_ESCAPE:
+            glfwSetWindowShouldClose(window, true);
+            break;
+
+        case GLFW_KEY_C:
+            colorIndex = (colorIndex + 1) % presetColors.size();
+            break;
+        
+        case GLFW_KEY_LEFT:
+            rotationAngleX -= rotationStep;
+            break;
+        
+        case GLFW_KEY_RIGHT:
+            rotationAngleX += rotationStep;
+            break;
+
+        case GLFW_KEY_UP:
+            rotationAngleY += rotationStep;
+            break;
+
+        case GLFW_KEY_DOWN:
+            rotationAngleY -= rotationStep;
+            break;
+
+
+        case GLFW_KEY_I:
+            lightPos.y += lightStep;
+            break;
+        
+        case GLFW_KEY_J:
+            lightPos.y -= lightStep;
+            break;
+
+        case GLFW_KEY_K:
+            lightPos.x += lightStep;
+            break;
+
+        case GLFW_KEY_L:
+            lightPos.x -= lightStep;
+            break;
+
+        case GLFW_KEY_U:
+            lightPos.z += lightStep;
+            break;
+
+        case GLFW_KEY_O:
+            lightPos.z -= lightStep;
+            break;
+        }
+    }
+
 }
 
 // -----------------------------------------------------------------------------

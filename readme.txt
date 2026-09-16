@@ -73,5 +73,7 @@ git add .
 git commit -m "Your commit message here"
 git push -u origin main
 
+git add .; git commit -m "checkpoint commit"; git push -u origin main
+
 
 clear; make clean; make all
