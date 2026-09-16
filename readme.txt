@@ -1,18 +1,21 @@
-• Name of student: Khoa Do
-• Operating System of your Environment: macos
-• Did you collaborate with anyone in the class? If so, let us know who you talked to and what sort of help
-you gave or received.: No
-• Were there any references (books, papers, websites, etc.) that you found particularly helpful for
-completing your assignment? Please provide a list.: No
+• Name of student: Answer: Khoa Do
+• Did you collaborate with anyone in the class? If so, let us know who you talked to and what sort of help you
+gave or received. Answer: It's me and the professor
+• Were there any references (books, papers, websites, etc.) that you found particularly helpful for completing
+your assignment? Please provide a list. Answer: There were some errors with the shader that I asked CoPilot for help
+• Why does a cube need more than eight vertex entries once normals are accounted for? What did you
+conclude, and how did it shape your vertices array? Answer: Because a cube needs to be split into triangle so it becomes twice to 16 vertices.  
+    However, I see that there are 72 vertices so I think it has to do with the triangles which contains 3 vertices each.
+
 • Are there any known problems with your code? If so, please provide a list and, if possible, describe what
 you think the cause is and how you might fix them if you had more time or motivation. This is very
-important, as we're much more likely to assign partial credit if you help us understand what's going on.: No
+important, as we're much more likely to assign partial credit if you help us understand what's going on.
+Answer: There are currently no known problems.
+
 • Got any comments about this assignment that you'd like to share? Was it too long? Too hard? Were the
-requirements unclear? Did you have fun, or did you hate it? Did you learn something, or was it a total
-waste of your time? Feel free to be brutally honest; I promise I won't take it personally.: No
-
-
-
+requirements unclear? Did building this from scratch (rather than filling in blanks) change how well you
+understood it? Feel free to be brutally honest; we promise we won't take it personally.
+Answer: The video coding session was extremely helpful and needed for the working problem.
 
 
 
