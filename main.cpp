@@ -92,7 +92,7 @@ void main() {                           // GLSL entry point -- runs once per ver
     // transforming a *direction* like a normal instead of a *point*.
     Normal = mat3(transform) * aNormal; // rotate/scale this vertex's normal the same way the shape itself is rotated/scaled
 
-    //FragPos = vec3(worldPos); // pass the world-space position to the fragment shader
+    FragPos = vec3(worldPos); // pass the world-space position to the fragment shader
 
     // gl_Position is a special built-in output: OpenGL reads it to know
     // where this vertex lands on screen (in clip space).
@@ -104,8 +104,7 @@ const char* fragmentShaderSource = R"GLSL(
 #version 330 core
 out vec4 FragColor;      // the final pixel color -- this is the only required output
 
-int vec3 FragPos;          // interpolated from the vertex shader's "out vec3 FragPos" above
-
+in vec3 FragPos;         // interpolated from the vertex shader's "out vec3 FragPos" above
 in vec3 Normal;          // interpolated from the vertex shader's "out vec3 Normal" above
 uniform vec3 color;      // this letter's current color, set from the CPU each frame
 uniform vec3 lightPos;   // the light's position, set from the CPU each frame
